@@ -9,7 +9,7 @@
       --void: #000000;
       --neon-cyan: #00ffff;
       --glitch-red: #ff0033;
-      --muted: #0f1f2a;
+      --glass: rgba(0, 15, 24, 0.62);
     }
 
     * { box-sizing: border-box; }
@@ -25,25 +25,51 @@
       overflow: hidden;
     }
 
+    .glass {
+      background: var(--glass);
+      border: 1px solid rgba(0, 255, 255, 0.32);
+      box-shadow: 0 0 16px rgba(0, 255, 255, 0.1), inset 0 0 20px rgba(0, 255, 255, 0.05);
+      backdrop-filter: blur(4px);
+      border-radius: 8px;
+    }
+
     #hud {
       position: fixed;
       top: 14px;
       left: 14px;
-      width: min(360px, 42vw);
+      width: min(520px, 68vw);
       z-index: 10;
       pointer-events: none;
+      padding: 10px 12px;
       text-shadow: 0 0 10px rgba(0, 255, 255, 0.75);
+    }
+
+    #title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+    }
+
+    #sync-label {
+      margin-top: 6px;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     #sync-track {
       margin-top: 8px;
       width: 100%;
-      height: 14px;
+      height: 12px;
       border: 1px solid rgba(0, 255, 255, 0.8);
       box-shadow: inset 0 0 8px rgba(0, 255, 255, 0.35);
       background: rgba(0, 0, 0, 0.65);
       position: relative;
       overflow: hidden;
+      border-radius: 999px;
     }
 
     #sync-fill {
@@ -55,18 +81,48 @@
       transition: width 80ms linear;
     }
 
+    #legend {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 10;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #9aefff;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .chip {
+      border: 1px solid rgba(0, 255, 255, 0.4);
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: rgba(0, 0, 0, 0.4);
+    }
+
     #panel {
       position: fixed;
       bottom: 14px;
       left: 14px;
-      background: rgba(0, 0, 0, 0.45);
-      border: 1px solid rgba(0, 255, 255, 0.35);
       color: #8ce9ff;
-      padding: 8px 10px;
+      padding: 10px 12px;
       font-size: 12px;
-      line-height: 1.5;
+      line-height: 1.45;
       z-index: 10;
-      max-width: 460px;
+      width: min(620px, 92vw);
+    }
+
+    #panel strong { color: #c8ffff; }
+
+    #panel-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(180px, 1fr));
+      gap: 4px 12px;
     }
 
     canvas {
@@ -77,32 +133,46 @@
       image-rendering: pixelated;
       background: #000;
     }
+
+    @media (max-width: 760px) {
+      #hud { width: calc(100vw - 28px); }
+      #legend { display: none; }
+      #panel-grid { grid-template-columns: 1fr; }
+      #panel { font-size: 11px; }
+    }
   </style>
 </head>
 <body>
-  <div id="hud">
-    <div><strong>GHOST // IN THE WIRE</strong></div>
+  <div id="hud" class="glass">
+    <div id="title-row">
+      <strong>GHOST // IN THE WIRE</strong>
+      <span>PROTO // UI OPT</span>
+    </div>
     <div id="sync-label">SYNC: 100% | DMG x1.0</div>
     <div id="sync-track"><div id="sync-fill"></div></div>
   </div>
 
+  <div id="legend" class="glass">
+    <div>STATE LEGEND</div>
+    <div class="chips">
+      <span class="chip">Patrol: Red</span>
+      <span class="chip">Chase: Amber</span>
+      <span class="chip">Evade: Cyan</span>
+      <span class="chip">Trait Ring: Type</span>
+    </div>
+  </div>
+
   <canvas id="game" width="1100" height="700"></canvas>
 
-  <div id="panel">
-    <div>Move: WASD / Arrow Keys (Mobile: left drag)</div>
-    <div>Snap Dash to nearest wire: <strong>Space</strong> (Mobile: tap right)</div>
-    <div>Regenerate room/wire seed: <strong>R</strong></div>
-    <div>Skills: <strong>1</strong> Overload / <strong>2</strong> Short Circuit / <strong>3</strong> Mirror Echo</div>
-    <div>Meta Protocol switch: <strong>Q</strong> (unlock via shards).</div>
-    <div>Performance tier toggle: <strong>P</strong> (high / low).</div>
-    <div>Auto performance governor: <strong>G</strong> (adaptive quality).</div>
-    <div>Regression metrics are shown in HUD: frame/dash/input latency.</div>
-    <div>Destroy red drones by dashing through them to trigger possession.</div>
-    <div>Route optimization build: wire-chain dash + critical Sync feedback.</div>
-    <div>Enemy AI states online: Patrol / Chase / Evade.</div>
-    <div>Audio pulse layer online: dash / kill / hit distortion.</div>
-    <div>Phase 3 prototype online: procedural rooms + wire density routing.</div>
-    <div>Possession trait inherit online: swift / tank / volatile.</div>
+  <div id="panel" class="glass">
+    <div id="panel-grid">
+      <div>Move: <strong>WASD / Arrows</strong> (Mobile: left drag)</div>
+      <div>Dash: <strong>Space</strong> (Mobile: tap right)</div>
+      <div>Reseed: <strong>R</strong></div>
+      <div>Meta Protocol: <strong>Q</strong></div>
+      <div>Skills: <strong>1/2/3</strong> Overload / Short / Mirror</div>
+      <div>Perf: <strong>P</strong> tier, <strong>G</strong> auto-governor</div>
+    </div>
   </div>
 
   <script src="main.js"></script>
