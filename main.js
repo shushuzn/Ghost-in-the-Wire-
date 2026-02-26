@@ -18,6 +18,7 @@ const cfg = {
     cyan: "#00ffff",
     red: "#ff0033",
     white: "#ffffff",
+    amber: "#ffbf00",
   },
   player: {
     size: 15,
@@ -31,6 +32,15 @@ const cfg = {
     critical: 35,
     passiveDrain: 4.5,
     dashDrain: 8.8,
+  },
+  enemy: {
+    patrolSpeed: 56,
+    chaseSpeed: 100,
+    evadeSpeed: 128,
+    chaseRadius: 210,
+    evadeRadius: 92,
+    retargetMin: 0.8,
+    retargetMax: 1.8,
   },
 };
 
@@ -62,15 +72,7 @@ const wires = links.map(([a, b]) => {
   const B = nodes[b];
   const dx = B.x - A.x;
   const dy = B.y - A.y;
-  return {
-    ax: A.x,
-    ay: A.y,
-    bx: B.x,
-    by: B.y,
-    dx,
-    dy,
-    len: Math.hypot(dx, dy) || 1,
-  };
+  return { ax: A.x, ay: A.y, bx: B.x, by: B.y, dx, dy, len: Math.hypot(dx, dy) || 1 };
 });
 
 const trails = [];
@@ -117,7 +119,6 @@ function projectToWire(px, py, wire) {
 function nearestWire(px, py) {
   let best = Infinity;
   let hit = null;
-
   for (const wire of wires) {
     const p = projectToWire(px, py, wire);
     if (p.d2 < best) {
@@ -125,7 +126,6 @@ function nearestWire(px, py) {
       hit = { wire, p };
     }
   }
-
   return hit;
 }
 
@@ -138,13 +138,15 @@ function createEnemies(count = 10) {
       vy: rand(-48, 48),
       r: 13,
       alive: true,
+      state: "patrol",
+      stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
+      patrolAngle: rand(0, Math.PI * 2),
     });
   }
 }
 
 function beginDash() {
   if (!player.canDash || player.possessing) return;
-
   const nearest = nearestWire(player.x, player.y);
   if (!nearest || nearest.p.d2 > cfg.player.attachRadius ** 2) return;
 
@@ -156,12 +158,9 @@ function beginDash() {
 
   const nx = player.wire.dx / player.wire.len;
   const ny = player.wire.dy / player.wire.len;
-
   const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
   const inputY = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-
-  const dot = inputX * nx + inputY * ny;
-  player.wireDir = dot >= 0 ? 1 : -1;
+  player.wireDir = inputX * nx + inputY * ny >= 0 ? 1 : -1;
 
   player.canDash = false;
   player.dashCd = cfg.player.dashCooldown;
@@ -169,13 +168,7 @@ function beginDash() {
 }
 
 function emitTrail() {
-  trails.push({
-    x: player.x,
-    y: player.y,
-    life: 0.24,
-    max: 0.24,
-    speed: Math.hypot(player.vx, player.vy),
-  });
+  trails.push({ x: player.x, y: player.y, life: 0.24, max: 0.24, speed: Math.hypot(player.vx, player.vy) });
 }
 
 function emitPossessionParticles(fromX, fromY, toX, toY) {
@@ -200,7 +193,6 @@ function possessTo(enemy) {
   player.fromY = player.y;
   player.toX = enemy.x;
   player.toY = enemy.y;
-
   emitPossessionParticles(player.x, player.y, enemy.x, enemy.y);
 }
 
@@ -213,13 +205,10 @@ function tryChainWire() {
 
   let target = null;
   let best = 18 * 18;
-
   for (const wire of wires) {
     if (wire === player.wire) continue;
-
     const dA = dist2(edgeX, edgeY, wire.ax, wire.ay);
     const dB = dist2(edgeX, edgeY, wire.bx, wire.by);
-
     if (dA < best) {
       best = dA;
       target = { wire, t: 0, dir: 1 };
@@ -239,6 +228,37 @@ function tryChainWire() {
   }
 }
 
+function updateEnemyAI(enemy, dt) {
+  const dx = player.x - enemy.x;
+  const dy = player.y - enemy.y;
+  const d = Math.hypot(dx, dy) || 1;
+
+  if (d < cfg.enemy.evadeRadius || player.onWire) {
+    enemy.state = "evade";
+  } else if (d < cfg.enemy.chaseRadius) {
+    enemy.state = "chase";
+  } else {
+    enemy.state = "patrol";
+  }
+
+  enemy.stateT -= dt;
+  if (enemy.stateT <= 0) {
+    enemy.patrolAngle += rand(-0.9, 0.9);
+    enemy.stateT = rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax);
+  }
+
+  if (enemy.state === "patrol") {
+    enemy.vx = Math.cos(enemy.patrolAngle) * cfg.enemy.patrolSpeed;
+    enemy.vy = Math.sin(enemy.patrolAngle) * cfg.enemy.patrolSpeed;
+  } else if (enemy.state === "chase") {
+    enemy.vx = (dx / d) * cfg.enemy.chaseSpeed;
+    enemy.vy = (dy / d) * cfg.enemy.chaseSpeed;
+  } else {
+    enemy.vx = (-dx / d) * cfg.enemy.evadeSpeed;
+    enemy.vy = (-dy / d) * cfg.enemy.evadeSpeed;
+  }
+}
+
 function update(dt) {
   player.dashCd -= dt;
   if (player.dashCd <= 0) player.canDash = true;
@@ -251,17 +271,14 @@ function update(dt) {
   if (!player.possessing) {
     if (player.onWire && player.wire) {
       player.wireT += ((player.dashSpeed * player.wireDir) / player.wire.len) * dt;
-
       if (player.wireT < 0 || player.wireT > 1) {
         tryChainWire();
         player.wireT = clamp(player.wireT, 0, 1);
-
         if (!player.wire || (player.wireT === 0 && player.wireDir < 0) || (player.wireT === 1 && player.wireDir > 0)) {
           player.onWire = false;
           player.wire = null;
         }
       }
-
       if (player.wire) {
         player.x = player.wire.ax + player.wire.dx * player.wireT;
         player.y = player.wire.ay + player.wire.dy * player.wireT;
@@ -271,16 +288,13 @@ function update(dt) {
     } else {
       let ix = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
       let iy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
-
       if (critical) {
         ix += rand(-jitter, jitter) * 0.014;
         iy += rand(-jitter, jitter) * 0.014;
       }
-
       const len = Math.hypot(ix, iy) || 1;
       ix /= len;
       iy /= len;
-
       const speed = player.speed + (100 - player.sync) * 1.15;
       player.vx = ix * speed;
       player.vy = iy * speed;
@@ -291,12 +305,10 @@ function update(dt) {
     player.possessT += dt;
     const t = clamp(player.possessT / player.possessDur, 0, 1);
     const eased = t * t * (3 - 2 * t);
-
     player.x = player.fromX + (player.toX - player.fromX) * eased;
     player.y = player.fromY + (player.toY - player.fromY) * eased;
     player.vx = (player.toX - player.fromX) / player.possessDur;
     player.vy = (player.toY - player.fromY) / player.possessDur;
-
     if (t >= 1) {
       player.possessing = false;
       player.onWire = false;
@@ -310,11 +322,21 @@ function update(dt) {
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
 
+    updateEnemyAI(enemy, dt);
     enemy.x += enemy.vx * dt;
     enemy.y += enemy.vy * dt;
 
-    if (enemy.x < 18 || enemy.x > W - 18) enemy.vx *= -1;
-    if (enemy.y < 18 || enemy.y > H - 18) enemy.vy *= -1;
+    if (enemy.x < 18 || enemy.x > W - 18) {
+      enemy.vx *= -1;
+      enemy.patrolAngle += Math.PI * 0.7;
+    }
+    if (enemy.y < 18 || enemy.y > H - 18) {
+      enemy.vy *= -1;
+      enemy.patrolAngle += Math.PI * 0.7;
+    }
+
+    enemy.x = clamp(enemy.x, 18, W - 18);
+    enemy.y = clamp(enemy.y, 18, H - 18);
 
     const killRadius = player.onWire ? 26 * damageMul : 10;
     if (dist2(player.x, player.y, enemy.x, enemy.y) < (killRadius + enemy.r) ** 2) {
@@ -372,6 +394,15 @@ function drawGhost(offsetX, color, alpha) {
   ctx.globalAlpha = 1;
 }
 
+function drawEnemy(enemy) {
+  const stateColor = enemy.state === "chase" ? cfg.colors.amber : enemy.state === "evade" ? cfg.colors.cyan : cfg.colors.red;
+  ctx.fillStyle = stateColor;
+  ctx.shadowColor = stateColor;
+  ctx.shadowBlur = 16;
+  ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r, enemy.r * 2, enemy.r * 2);
+  ctx.shadowBlur = 0;
+}
+
 function render() {
   const speed = Math.hypot(player.vx, player.vy);
   const glitch = clamp((speed - 160) / 560, 0, 1);
@@ -388,13 +419,11 @@ function render() {
 
   const near = nearestWire(player.x, player.y);
   const highlighted = near && near.p.d2 < cfg.player.attachRadius ** 2 ? near.wire : null;
-
   for (const wire of wires) drawWire(wire, wire === highlighted);
 
   for (const t of trails) {
     const k = t.life / t.max;
     const split = clamp((t.speed - 160) / 560, 0, 1) * 8;
-
     ctx.globalAlpha = 0.25 * k;
     ctx.fillStyle = cfg.colors.red;
     ctx.fillRect(t.x - 9 - split, t.y - 9, 16, 16);
@@ -408,11 +437,7 @@ function render() {
 
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
-    ctx.fillStyle = cfg.colors.red;
-    ctx.shadowColor = cfg.colors.red;
-    ctx.shadowBlur = 18;
-    ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r, enemy.r * 2, enemy.r * 2);
-    ctx.shadowBlur = 0;
+    drawEnemy(enemy);
   }
 
   const chroma = glitch * 8;

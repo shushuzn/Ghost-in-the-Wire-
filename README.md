@@ -25,6 +25,7 @@ Then open `http://localhost:4173`.
 - Chromatic aberration trail and speed-based glitch rendering
 - Enemy kill possession effect (particle dissolve + reconstruction)
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
+- Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
 
 ## Roadmap
 
