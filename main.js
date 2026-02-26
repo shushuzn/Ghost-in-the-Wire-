@@ -72,6 +72,10 @@ const meta = {
   shards: 0,
   unlocked: ["base"],
   protocol: "base",
+  score: 0,
+  combo: 1,
+  comboT: 0,
+  wave: 1,
 };
 
 const regression = {
@@ -133,6 +137,41 @@ function protocolDamageBonus() {
 function protocolDrainMul() {
   if (meta.protocol === "rift") return 0.78;
   return 1;
+}
+
+
+function registerKill() {
+  meta.comboT = 3.1;
+  meta.combo = Math.min(6, meta.combo + 0.35);
+  const gain = Math.round(10 * meta.combo);
+  meta.score += gain;
+}
+
+function updateWaveProgress() {
+  const alive = enemies.filter((e) => e.alive).length;
+  if (alive > 0) return;
+  meta.wave += 1;
+
+  const bonus = Math.min(3, Math.floor(meta.wave / 3));
+  const extra = Math.max(2, bonus + 1);
+  const room = rooms[Math.floor(Math.random() * rooms.length)] || { x: 80, y: 80, w: W - 160, h: H - 160, density: 0.6 };
+
+  for (let i = 0; i < extra; i += 1) {
+    enemies.push({
+      x: rand(room.x + 24, room.x + room.w - 24),
+      y: rand(room.y + 24, room.y + room.h - 24),
+      vx: rand(-48, 48),
+      vy: rand(-48, 48),
+      r: 13,
+      alive: true,
+      state: "patrol",
+      stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
+      patrolAngle: rand(0, Math.PI * 2),
+      trait: traitTypes[Math.floor(rand(0, traitTypes.length))],
+    });
+  }
+
+  feedback.hitFlash = Math.max(feedback.hitFlash, 0.35);
 }
 
 
@@ -436,6 +475,10 @@ function resetPlayerPosition() {
 
 function buildLevel(seed) {
   levelSeed = seed;
+  meta.wave = 1;
+  meta.score = 0;
+  meta.combo = 1;
+  meta.comboT = 0;
   buildRooms(seed);
   buildWiresFromRooms();
   buildStaticLayer();
@@ -576,6 +619,8 @@ function updateEnemyAI(enemy, dt) {
 
 function update(dt) {
   player.dashCd -= dt;
+  meta.comboT -= dt;
+  if (meta.comboT <= 0) meta.combo = Math.max(1, meta.combo - dt * 1.3);
   player.hurtCd -= dt;
   player.skillCd.overload = Math.max(0, player.skillCd.overload - dt);
   player.skillCd.short = Math.max(0, player.skillCd.short - dt);
@@ -667,6 +712,7 @@ function update(dt) {
       possessTo(enemy);
       player.sync = clamp(player.sync + 24, 0, 100);
       meta.shards += 1;
+      registerKill();
       updateMetaUnlocks();
       sfxKill();
       continue;
@@ -703,9 +749,11 @@ function update(dt) {
 
   if (Math.hypot(player.vx, player.vy) > 240 && (cfg.perf.tier === "high" || Math.random() > 0.6)) emitTrail();
 
+  updateWaveProgress();
+
   const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
   const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
-  const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards]`;
+  const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards] W${meta.wave} C${meta.combo.toFixed(1)} S${meta.score}`;
   const perfText = ` | PERF ${cfg.perf.tier.toUpperCase()}${cfg.perf.auto ? "/AUTO" : ""}`;
   const dashRate = regression.dashAttempts > 0 ? (regression.dashSuccesses / regression.dashAttempts) * 100 : 0;
   const regText = ` | REG f:${regression.frameAvgMs.toFixed(1)}ms d:${dashRate.toFixed(0)}% i:${regression.dashLatencyMsAvg.toFixed(1)}ms`;

@@ -29,6 +29,7 @@
 > 新增：夺舍后临时继承敌人特性（swift/tank/volatile），持续时间可见于 HUD。
 > 新增：技能模块原型（Overload / Short Circuit / Mirror Echo）及独立冷却显示。
 > 新增：Meta 进度原型（shards 解锁协议 + Q 切换协议 + 风险收益差异）。
+> 新增：波次推进 + 连击积分回路，提升战斗节奏与成长反馈。
 - [x] 夺舍后临时继承敌人特性（移动、攻速、子弹形态）
 - [x] Meta 进度（解锁新Ghost协议、风险换收益）
 
