@@ -20,8 +20,17 @@ Then open `http://localhost:4173`.
 ## Implemented Systems
 
 - Neon high-contrast visual palette (`#000000`, `#00FFFF`, `#FF0033`)
-- Static wire grid and nearest-wire snapping
-- Dash traversal along wire segments at 3x speed
+- Structured wire network with nearest-wire highlighting
+- Dash traversal along wire segments at 3x speed with endpoint chain-linking
 - Chromatic aberration trail and speed-based glitch rendering
 - Enemy kill possession effect (particle dissolve + reconstruction)
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
+
+## Roadmap
+
+Development now follows an explicit optimization roadmap in `ROADMAP.md`.
+
+- Phase 1: Vertical-slice foundations ✅
+- Phase 2: Reliability/readability optimization 🟡
+- Phase 3: Combat depth + roguelike loop 🔜
+- Phase 4: Performance + productionization 🔜
