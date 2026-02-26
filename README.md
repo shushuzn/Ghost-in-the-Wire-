@@ -27,6 +27,7 @@ Then open `http://localhost:4173`.
 - Enemy kill possession effect (particle dissolve + reconstruction)
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
 - Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
+- Possession trait inheritance (swift/tank/volatile) with temporary HUD buff timer
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
 
 ## Roadmap

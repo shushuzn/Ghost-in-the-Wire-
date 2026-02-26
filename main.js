@@ -74,6 +74,8 @@ const player = {
   toX: 0,
   toY: 0,
   hurtCd: 0,
+  possessBuff: null,
+  possessBuffT: 0,
 };
 
 const feedback = {
@@ -115,6 +117,8 @@ function playTone({ freq = 220, type = "square", gain = 0.03, attack = 0.005, de
 const sfxDash = () => playTone({ freq: 280, type: "sawtooth", gain: 0.025, decay: 0.08, slide: { to: 520, time: 0.08 } });
 const sfxKill = () => playTone({ freq: 620, type: "square", gain: 0.04, decay: 0.11, slide: { to: 220, time: 0.11 } });
 const sfxHit = () => playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
+
+const traitTypes = ["swift", "tank", "volatile"];
 
 function dist2(ax, ay, bx, by) {
   const dx = ax - bx;
@@ -228,6 +232,7 @@ function createEnemiesFromRooms() {
         state: "patrol",
         stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
         patrolAngle: rand(0, Math.PI * 2),
+        trait: traitTypes[Math.floor(rand(0, traitTypes.length))],
       });
     }
   }
@@ -295,6 +300,11 @@ function emitPossessionParticles(fromX, fromY, toX, toY) {
   }
 }
 
+function applyPossessBuff(trait) {
+  player.possessBuff = trait;
+  player.possessBuffT = 8.5;
+}
+
 function possessTo(enemy) {
   player.possessing = true;
   player.possessT = 0;
@@ -303,6 +313,7 @@ function possessTo(enemy) {
   player.toX = enemy.x;
   player.toY = enemy.y;
   emitPossessionParticles(player.x, player.y, enemy.x, enemy.y);
+  applyPossessBuff(enemy.trait || "swift");
 }
 
 function tryChainWire() {
@@ -370,7 +381,11 @@ function update(dt) {
   feedback.hitFlash = Math.max(0, feedback.hitFlash - dt * 4.2);
   if (player.dashCd <= 0) player.canDash = true;
 
-  player.sync = clamp(player.sync - (player.onWire ? cfg.sync.dashDrain : cfg.sync.passiveDrain) * dt, 0, 100);
+  if (player.possessBuffT > 0) player.possessBuffT -= dt;
+  if (player.possessBuffT <= 0) player.possessBuff = null;
+
+  const drainMul = player.possessBuff === "tank" ? 0.65 : 1;
+  player.sync = clamp(player.sync - (player.onWire ? cfg.sync.dashDrain : cfg.sync.passiveDrain) * drainMul * dt, 0, 100);
   const critical = player.sync < cfg.sync.critical;
   const jitter = critical ? ((cfg.sync.critical - player.sync) / cfg.sync.critical) * 76 : 0;
 
@@ -401,7 +416,8 @@ function update(dt) {
       const len = Math.hypot(ix, iy) || 1;
       ix /= len;
       iy /= len;
-      const speed = player.speed + (100 - player.sync) * 1.15;
+      const buffSpeed = player.possessBuff === "swift" ? 90 : 0;
+      const speed = player.speed + buffSpeed + (100 - player.sync) * 1.15;
       player.vx = ix * speed;
       player.vy = iy * speed;
       player.x = clamp(player.x + player.vx * dt, 16, W - 16);
@@ -423,7 +439,8 @@ function update(dt) {
     }
   }
 
-  const damageMul = critical ? 2 : 1;
+  const buffDamage = player.possessBuff === "volatile" ? 0.6 : 0;
+  const damageMul = (critical ? 2 : 1) + buffDamage;
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
 
@@ -478,7 +495,8 @@ function update(dt) {
 
   if (Math.hypot(player.vx, player.vy) > 240) emitTrail();
 
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${critical ? " // CRITICAL" : ""}`;
+  const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -511,11 +529,15 @@ function drawGhost(offsetX, color, alpha) {
 
 function drawEnemy(enemy) {
   const stateColor = enemy.state === "chase" ? cfg.colors.amber : enemy.state === "evade" ? cfg.colors.cyan : cfg.colors.red;
+  const traitColor = enemy.trait === "swift" ? "#4dff88" : enemy.trait === "tank" ? "#8d7dff" : "#ff6a00";
   ctx.fillStyle = stateColor;
   ctx.shadowColor = stateColor;
   ctx.shadowBlur = 16;
   ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r, enemy.r * 2, enemy.r * 2);
   ctx.shadowBlur = 0;
+  ctx.strokeStyle = traitColor;
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(enemy.x - enemy.r - 1, enemy.y - enemy.r - 1, enemy.r * 2 + 2, enemy.r * 2 + 2);
 }
 
 function drawRooms() {
