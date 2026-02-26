@@ -47,6 +47,9 @@ const cfg = {
     shortCd: 11,
     mirrorCd: 13,
   },
+  perf: {
+    tier: "high",
+  },
 };
 
 const wires = [];
@@ -57,6 +60,10 @@ const particlePool = [];
 const enemies = [];
 const rooms = [];
 const mirrorEchoes = [];
+const staticLayer = document.createElement("canvas");
+staticLayer.width = W;
+staticLayer.height = H;
+const staticCtx = staticLayer.getContext("2d");
 let levelSeed = 1;
 
 const meta = {
@@ -349,6 +356,35 @@ function createEnemiesFromRooms() {
   }
 }
 
+
+function buildStaticLayer() {
+  staticCtx.clearRect(0, 0, W, H);
+  staticCtx.fillStyle = "rgba(0,0,0,1)";
+  staticCtx.fillRect(0, 0, W, H);
+
+  staticCtx.strokeStyle = "rgba(0,255,255,0.12)";
+  staticCtx.lineWidth = 1;
+  for (const room of rooms) {
+    staticCtx.strokeRect(room.x, room.y, room.w, room.h);
+  }
+
+  for (const wire of wires) {
+    staticCtx.strokeStyle = "rgba(0,255,255,0.18)";
+    staticCtx.lineWidth = 7;
+    staticCtx.beginPath();
+    staticCtx.moveTo(wire.ax, wire.ay);
+    staticCtx.lineTo(wire.bx, wire.by);
+    staticCtx.stroke();
+
+    staticCtx.strokeStyle = "rgba(0,255,255,0.62)";
+    staticCtx.lineWidth = 2;
+    staticCtx.beginPath();
+    staticCtx.moveTo(wire.ax, wire.ay);
+    staticCtx.lineTo(wire.bx, wire.by);
+    staticCtx.stroke();
+  }
+}
+
 function resetPlayerPosition() {
   const hub = rooms[Math.floor(rooms.length / 2)] || { x: W * 0.5, y: H * 0.5, w: 0, h: 0 };
   player.x = hub.x + hub.w * 0.5;
@@ -374,6 +410,7 @@ function buildLevel(seed) {
   levelSeed = seed;
   buildRooms(seed);
   buildWiresFromRooms();
+  buildStaticLayer();
   createEnemiesFromRooms();
   resetPlayerPosition();
 }
@@ -630,12 +667,13 @@ function update(dt) {
     if (mirrorEchoes[i].life <= 0) mirrorEchoes.splice(i, 1);
   }
 
-  if (Math.hypot(player.vx, player.vy) > 240) emitTrail();
+  if (Math.hypot(player.vx, player.vy) > 240 && (cfg.perf.tier === "high" || Math.random() > 0.6)) emitTrail();
 
   const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
   const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
   const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards]`;
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${critical ? " // CRITICAL" : ""}`;
+  const perfText = ` | PERF ${cfg.perf.tier.toUpperCase()}`;
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${perfText}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -679,14 +717,6 @@ function drawEnemy(enemy) {
   ctx.strokeRect(enemy.x - enemy.r - 1, enemy.y - enemy.r - 1, enemy.r * 2 + 2, enemy.r * 2 + 2);
 }
 
-function drawRooms() {
-  ctx.strokeStyle = "rgba(0,255,255,0.12)";
-  ctx.lineWidth = 1;
-  for (const room of rooms) {
-    ctx.strokeRect(room.x, room.y, room.w, room.h);
-  }
-}
-
 function render() {
   const speed = Math.hypot(player.vx, player.vy);
   const glitch = clamp((speed - 160) / 560, 0, 1);
@@ -698,14 +728,11 @@ function render() {
   ctx.save();
   ctx.translate(shakeX, shakeY);
 
-  ctx.fillStyle = "rgba(0,0,0,0.32)";
-  ctx.fillRect(-24, -24, W + 48, H + 48);
-
-  drawRooms();
+  ctx.drawImage(staticLayer, 0, 0);
 
   const near = nearestWire(player.x, player.y);
   const highlighted = near && near.p.d2 < cfg.player.attachRadius ** 2 ? near.wire : null;
-  for (const wire of wires) drawWire(wire, wire === highlighted);
+  if (highlighted) drawWire(highlighted, true);
 
   for (const t of trails) {
     const k = t.life / t.max;
@@ -779,6 +806,11 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key.toLowerCase() === "q") {
     nextProtocol();
+    return;
+  }
+
+  if (e.key.toLowerCase() === "p") {
+    cfg.perf.tier = cfg.perf.tier === "high" ? "low" : "high";
     return;
   }
 

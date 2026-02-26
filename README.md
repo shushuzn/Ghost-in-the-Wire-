@@ -19,6 +19,7 @@ Then open `http://localhost:4173`.
 - Regenerate procedural room/wire seed: `R`
 - Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
 - Switch unlocked Ghost Protocol (Meta): `Q`
+- Performance tier toggle: `P` (high/low effects load)
 
 ## Implemented Systems
 
@@ -33,7 +34,7 @@ Then open `http://localhost:4173`.
 - Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
 - Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
-- Performance pass: trail/particle object pooling to reduce GC churn under heavy effects
+- Performance pass: static layer caching + trail/particle object pooling to reduce draw and GC churn under heavy effects
 
 ## Roadmap
 
