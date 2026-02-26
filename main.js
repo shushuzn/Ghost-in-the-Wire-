@@ -158,18 +158,8 @@ function updateWaveProgress() {
   const room = rooms[Math.floor(Math.random() * rooms.length)] || { x: 80, y: 80, w: W - 160, h: H - 160, density: 0.6 };
 
   for (let i = 0; i < extra; i += 1) {
-    enemies.push({
-      x: rand(room.x + 24, room.x + room.w - 24),
-      y: rand(room.y + 24, room.y + room.h - 24),
-      vx: rand(-48, 48),
-      vy: rand(-48, 48),
-      r: 13,
-      alive: true,
-      state: "patrol",
-      stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
-      patrolAngle: rand(0, Math.PI * 2),
-      trait: traitTypes[Math.floor(rand(0, traitTypes.length))],
-    });
+    const elite = meta.wave % 4 === 0 && i === 0;
+    enemies.push(spawnEnemy(room, elite));
   }
 
   feedback.hitFlash = Math.max(feedback.hitFlash, 0.35);
@@ -217,6 +207,22 @@ const sfxKill = () => playTone({ freq: 620, type: "square", gain: 0.04, decay: 0
 const sfxHit = () => playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
 
 const traitTypes = ["swift", "tank", "volatile"];
+
+function spawnEnemy(room, elite = false) {
+  return {
+    x: rand(room.x + 24, room.x + room.w - 24),
+    y: rand(room.y + 24, room.y + room.h - 24),
+    vx: rand(-48, 48),
+    vy: rand(-48, 48),
+    r: elite ? 18 : 13,
+    alive: true,
+    elite,
+    state: "patrol",
+    stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
+    patrolAngle: rand(0, Math.PI * 2),
+    trait: traitTypes[Math.floor(rand(0, traitTypes.length))],
+  };
+}
 
 function sfxSkill() {
   playTone({ freq: 420, type: "square", gain: 0.03, decay: 0.1, slide: { to: 760, time: 0.1 } });
@@ -408,18 +414,7 @@ function createEnemiesFromRooms() {
   for (const room of rooms) {
     const count = Math.max(1, Math.floor(1 + room.density * 3));
     for (let i = 0; i < count; i += 1) {
-      enemies.push({
-        x: rand(room.x + 24, room.x + room.w - 24),
-        y: rand(room.y + 24, room.y + room.h - 24),
-        vx: rand(-48, 48),
-        vy: rand(-48, 48),
-        r: 13,
-        alive: true,
-        state: "patrol",
-        stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
-        patrolAngle: rand(0, Math.PI * 2),
-        trait: traitTypes[Math.floor(rand(0, traitTypes.length))],
-      });
+      enemies.push(spawnEnemy(room, false));
     }
   }
 }
@@ -639,15 +634,16 @@ function updateEnemyAI(enemy, dt) {
     enemy.stateT = rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax);
   }
 
+  const eliteMul = enemy.elite ? 1.18 : 1;
   if (enemy.state === "patrol") {
-    enemy.vx = Math.cos(enemy.patrolAngle) * cfg.enemy.patrolSpeed;
-    enemy.vy = Math.sin(enemy.patrolAngle) * cfg.enemy.patrolSpeed;
+    enemy.vx = Math.cos(enemy.patrolAngle) * cfg.enemy.patrolSpeed * eliteMul;
+    enemy.vy = Math.sin(enemy.patrolAngle) * cfg.enemy.patrolSpeed * eliteMul;
   } else if (enemy.state === "chase") {
-    enemy.vx = (dx / d) * cfg.enemy.chaseSpeed;
-    enemy.vy = (dy / d) * cfg.enemy.chaseSpeed;
+    enemy.vx = (dx / d) * cfg.enemy.chaseSpeed * eliteMul;
+    enemy.vy = (dy / d) * cfg.enemy.chaseSpeed * eliteMul;
   } else {
-    enemy.vx = (-dx / d) * cfg.enemy.evadeSpeed;
-    enemy.vy = (-dy / d) * cfg.enemy.evadeSpeed;
+    enemy.vx = (-dx / d) * cfg.enemy.evadeSpeed * eliteMul;
+    enemy.vy = (-dy / d) * cfg.enemy.evadeSpeed * eliteMul;
   }
 }
 
@@ -744,8 +740,9 @@ function update(dt) {
     if (dist2(player.x, player.y, enemy.x, enemy.y) < (killRadius + enemy.r) ** 2) {
       enemy.alive = false;
       possessTo(enemy);
-      player.sync = clamp(player.sync + 24, 0, 100);
-      meta.shards += 1;
+      player.sync = clamp(player.sync + (enemy.elite ? 34 : 24), 0, 100);
+      meta.shards += enemy.elite ? 2 : 1;
+      if (enemy.elite) meta.score += 120;
       registerKill();
       updateMetaUnlocks();
       sfxKill();
@@ -825,14 +822,21 @@ function drawGhost(offsetX, color, alpha) {
 function drawEnemy(enemy) {
   const stateColor = enemy.state === "chase" ? cfg.colors.amber : enemy.state === "evade" ? cfg.colors.cyan : cfg.colors.red;
   const traitColor = enemy.trait === "swift" ? "#4dff88" : enemy.trait === "tank" ? "#8d7dff" : "#ff6a00";
+  const eliteStroke = enemy.elite ? "#ffffff" : traitColor;
   ctx.fillStyle = stateColor;
   ctx.shadowColor = stateColor;
   ctx.shadowBlur = 16;
   ctx.fillRect(enemy.x - enemy.r, enemy.y - enemy.r, enemy.r * 2, enemy.r * 2);
   ctx.shadowBlur = 0;
-  ctx.strokeStyle = traitColor;
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = eliteStroke;
+  ctx.lineWidth = enemy.elite ? 2.2 : 1.5;
   ctx.strokeRect(enemy.x - enemy.r - 1, enemy.y - enemy.r - 1, enemy.r * 2 + 2, enemy.r * 2 + 2);
+  if (enemy.elite) {
+    ctx.globalAlpha = 0.7;
+    ctx.strokeStyle = traitColor;
+    ctx.strokeRect(enemy.x - enemy.r - 4, enemy.y - enemy.r - 4, enemy.r * 2 + 8, enemy.r * 2 + 8);
+    ctx.globalAlpha = 1;
+  }
 }
 
 function render() {
