@@ -3,6 +3,10 @@ const ctx = canvas.getContext("2d");
 
 const syncLabel = document.getElementById("sync-label");
 const syncFill = document.getElementById("sync-fill");
+const cfgSeedInput = document.getElementById("cfg-seed");
+const cfgWaveInput = document.getElementById("cfg-wave");
+const cfgDensityInput = document.getElementById("cfg-density");
+const cfgApplyBtn = document.getElementById("cfg-apply");
 
 const W = canvas.width;
 const H = canvas.height;
@@ -68,6 +72,12 @@ staticLayer.width = W;
 staticLayer.height = H;
 const staticCtx = staticLayer.getContext("2d");
 let levelSeed = 1;
+
+const levelSettings = {
+  startWave: 1,
+  densityMul: 1,
+  eliteEvery: 4,
+};
 
 const meta = {
   shards: 0,
@@ -158,7 +168,7 @@ function updateWaveProgress() {
   const room = rooms[Math.floor(Math.random() * rooms.length)] || { x: 80, y: 80, w: W - 160, h: H - 160, density: 0.6 };
 
   for (let i = 0; i < extra; i += 1) {
-    const elite = meta.wave % 4 === 0 && i === 0;
+    const elite = meta.wave % levelSettings.eliteEvery === 0 && i === 0;
     enemies.push(spawnEnemy(room, elite));
   }
 
@@ -412,7 +422,7 @@ function buildWiresFromRooms() {
 function createEnemiesFromRooms() {
   enemies.length = 0;
   for (const room of rooms) {
-    const count = Math.max(1, Math.floor(1 + room.density * 3));
+    const count = Math.max(1, Math.floor((1 + room.density * 3) * levelSettings.densityMul));
     for (let i = 0; i < count; i += 1) {
       enemies.push(spawnEnemy(room, false));
     }
@@ -490,7 +500,7 @@ function resetPlayerPosition() {
 
 function buildLevel(seed) {
   levelSeed = seed;
-  meta.wave = 1;
+  meta.wave = Math.max(1, levelSettings.startWave);
   meta.score = 0;
   meta.combo = 1;
   meta.comboT = 0;
@@ -941,12 +951,33 @@ function frame(now) {
   requestAnimationFrame(frame);
 }
 
+
+function applyLevelSettings() {
+  const nextSeed = Number(cfgSeedInput?.value || levelSeed) || levelSeed;
+  const nextWave = Math.max(1, Number(cfgWaveInput?.value || 1) || 1);
+  const nextDensity = Math.min(2.5, Math.max(0.5, Number(cfgDensityInput?.value || 1) || 1));
+
+  levelSettings.startWave = nextWave;
+  levelSettings.densityMul = nextDensity;
+  levelSeed = nextSeed;
+  buildLevel(levelSeed);
+}
+
+if (cfgApplyBtn) {
+  cfgApplyBtn.addEventListener("click", () => {
+    applyLevelSettings();
+  });
+}
+
 window.addEventListener("keydown", (e) => {
   ensureAudioContext();
   if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
 
   if (e.key.toLowerCase() === "r") {
-    buildLevel(levelSeed + 1);
+    const nextSeed = levelSeed + 1;
+    if (cfgSeedInput) cfgSeedInput.value = String(nextSeed);
+    levelSeed = nextSeed;
+    buildLevel(levelSeed);
     return;
   }
 
@@ -1035,4 +1066,7 @@ window.addEventListener("touchend", (e) => {
 }, { passive: true });
 
 buildLevel(levelSeed);
+if (cfgSeedInput) cfgSeedInput.value = String(levelSeed);
+if (cfgWaveInput) cfgWaveInput.value = String(levelSettings.startWave);
+if (cfgDensityInput) cfgDensityInput.value = String(levelSettings.densityMul.toFixed(1));
 requestAnimationFrame(frame);

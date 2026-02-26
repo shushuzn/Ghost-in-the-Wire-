@@ -17,6 +17,7 @@ Then open `http://localhost:4173`.
 - Move: `WASD` or arrow keys (mobile: left touch drag)
 - Snap Dash to nearest wire: `Space` (mobile: tap right side)
 - Regenerate procedural room/wire seed: `R`
+- Custom level settings (panel): seed, start wave, density multiplier + Apply Level
 - Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
 - Switch unlocked Ghost Protocol (Meta): `Q`
 - Performance tier toggle: `P` (high/low effects load)
