@@ -72,6 +72,18 @@ const meta = {
   protocol: "base",
 };
 
+const regression = {
+  frameAvgMs: 16.7,
+  frameSamples: 0,
+  dashAttempts: 0,
+  dashSuccesses: 0,
+  dashLatencyMsAvg: 0,
+  dashLatencySamples: 0,
+  lastDashKeydown: 0,
+};
+
+window.__ghostMetrics = regression;
+
 const player = {
   x: W * 0.5,
   y: H * 0.5,
@@ -416,6 +428,7 @@ function buildLevel(seed) {
 }
 
 function beginDash() {
+  regression.dashAttempts += 1;
   if (!player.canDash || player.possessing) return;
   const nearest = nearestWire(player.x, player.y);
   if (!nearest || nearest.p.d2 > cfg.player.attachRadius ** 2) return;
@@ -435,8 +448,15 @@ function beginDash() {
   player.canDash = false;
   player.dashCd = cfg.player.dashCooldown;
   player.sync = clamp(player.sync - 6, 0, 100);
+  regression.dashSuccesses += 1;
+  if (regression.lastDashKeydown > 0) {
+    const lat = performance.now() - regression.lastDashKeydown;
+    regression.dashLatencySamples += 1;
+    regression.dashLatencyMsAvg += (lat - regression.dashLatencyMsAvg) / regression.dashLatencySamples;
+  }
   sfxDash();
 }
+
 
 function emitTrail() {
   allocTrail(player.x, player.y, Math.hypot(player.vx, player.vy));
@@ -673,7 +693,9 @@ function update(dt) {
   const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
   const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards]`;
   const perfText = ` | PERF ${cfg.perf.tier.toUpperCase()}`;
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${perfText}${critical ? " // CRITICAL" : ""}`;
+  const dashRate = regression.dashAttempts > 0 ? (regression.dashSuccesses / regression.dashAttempts) * 100 : 0;
+  const regText = ` | REG f:${regression.frameAvgMs.toFixed(1)}ms d:${dashRate.toFixed(0)}% i:${regression.dashLatencyMsAvg.toFixed(1)}ms`;
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${perfText}${regText}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -790,6 +812,11 @@ function render() {
 function frame(now) {
   const dt = Math.min((now - lastT) / 1000, 0.033);
   lastT = now;
+
+  const frameMs = dt * 1000;
+  regression.frameSamples += 1;
+  regression.frameAvgMs += (frameMs - regression.frameAvgMs) / regression.frameSamples;
+
   update(dt);
   render();
   requestAnimationFrame(frame);
@@ -816,6 +843,7 @@ window.addEventListener("keydown", (e) => {
 
   if (e.code === "Space") {
     e.preventDefault();
+    regression.lastDashKeydown = performance.now();
     beginDash();
     return;
   }

@@ -43,4 +43,13 @@ Development now follows an explicit optimization roadmap in `ROADMAP.md`.
 - Phase 1: Vertical-slice foundations ✅
 - Phase 2: Reliability/readability optimization ✅
 - Phase 3: Combat depth + roguelike loop 🟡
-- Phase 4: Performance + productionization 🟡
+- Phase 4: Performance + productionization ✅
+
+
+## Regression Probe
+
+Run automated headless checks for frame time, dash success rate, and dash input latency:
+
+```bash
+python3 scripts/regression_probe.py
+```
