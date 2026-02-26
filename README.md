@@ -18,6 +18,7 @@ Then open `http://localhost:4173`.
 - Snap Dash to nearest wire: `Space`
 - Regenerate procedural room/wire seed: `R`
 - Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
+- Switch unlocked Ghost Protocol (Meta): `Q`
 
 ## Implemented Systems
 
@@ -30,6 +31,7 @@ Then open `http://localhost:4173`.
 - Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
 - Possession trait inheritance (swift/tank/volatile) with temporary HUD buff timer
 - Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
+- Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
 
 ## Roadmap

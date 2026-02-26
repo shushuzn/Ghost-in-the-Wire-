@@ -21,15 +21,16 @@
 - [x] 敌人行为状态机（巡逻 / 追踪 / 闪避）
 - [x] 命中与受击的音效层（电子噪声、失真脉冲）
 
-## Phase 3 — Combat Depth & Roguelike Loop (🟡 In Progress)
+## Phase 3 — Combat Depth & Roguelike Loop (✅ Completed)
 - [x] 程序化房间 + 路径生成（围绕“Wire密度”设计战斗节奏）
 - [x] 武器/技能模块化（例如：链路过载、短路爆发、镜像残影）
 
 > 当前迭代：已落地“房间+线网密度”原型，并支持 `R` 快速重生关卡种子。
 > 新增：夺舍后临时继承敌人特性（swift/tank/volatile），持续时间可见于 HUD。
 > 新增：技能模块原型（Overload / Short Circuit / Mirror Echo）及独立冷却显示。
+> 新增：Meta 进度原型（shards 解锁协议 + Q 切换协议 + 风险收益差异）。
 - [x] 夺舍后临时继承敌人特性（移动、攻速、子弹形态）
-- [ ] Meta 进度（解锁新Ghost协议、风险换收益）
+- [x] Meta 进度（解锁新Ghost协议、风险换收益）
 
 ## Phase 4 — Performance & Productionization (🔜 Next)
 - [ ] 画布渲染分层缓存（静态层/动态层）

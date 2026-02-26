@@ -57,6 +57,12 @@ const rooms = [];
 const mirrorEchoes = [];
 let levelSeed = 1;
 
+const meta = {
+  shards: 0,
+  unlocked: ["base"],
+  protocol: "base",
+};
+
 const player = {
   x: W * 0.5,
   y: H * 0.5,
@@ -84,6 +90,27 @@ const player = {
   possessBuffT: 0,
   skillCd: { overload: 0, short: 0, mirror: 0 },
 };
+
+function updateMetaUnlocks() {
+  if (meta.shards >= 6 && !meta.unlocked.includes("rift")) meta.unlocked.push("rift");
+  if (meta.shards >= 12 && !meta.unlocked.includes("surge")) meta.unlocked.push("surge");
+}
+
+function nextProtocol() {
+  const idx = meta.unlocked.indexOf(meta.protocol);
+  meta.protocol = meta.unlocked[(idx + 1) % meta.unlocked.length];
+}
+
+function protocolDamageBonus() {
+  if (meta.protocol === "surge") return 0.35;
+  return 0;
+}
+
+function protocolDrainMul() {
+  if (meta.protocol === "rift") return 0.78;
+  return 1;
+}
+
 
 const feedback = {
   hitFlash: 0,
@@ -292,6 +319,7 @@ function resetPlayerPosition() {
   player.vx = 0;
   player.vy = 0;
   player.sync = cfg.sync.start;
+  if (meta.protocol === "rift") player.sync = clamp(player.sync + 12, 0, 100);
   player.onWire = false;
   player.wire = null;
   player.possessing = false;
@@ -445,7 +473,7 @@ function update(dt) {
   if (player.possessBuffT > 0) player.possessBuffT -= dt;
   if (player.possessBuffT <= 0) player.possessBuff = null;
 
-  const drainMul = player.possessBuff === "tank" ? 0.65 : 1;
+  const drainMul = (player.possessBuff === "tank" ? 0.65 : 1) * protocolDrainMul();
   player.sync = clamp(player.sync - (player.onWire ? cfg.sync.dashDrain : cfg.sync.passiveDrain) * drainMul * dt, 0, 100);
   const critical = player.sync < cfg.sync.critical;
   const jitter = critical ? ((cfg.sync.critical - player.sync) / cfg.sync.critical) * 76 : 0;
@@ -501,7 +529,7 @@ function update(dt) {
   }
 
   const buffDamage = player.possessBuff === "volatile" ? 0.6 : 0;
-  const damageMul = (critical ? 2 : 1) + buffDamage;
+  const damageMul = (critical ? 2 : 1) + buffDamage + protocolDamageBonus();
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
 
@@ -526,6 +554,8 @@ function update(dt) {
       enemy.alive = false;
       possessTo(enemy);
       player.sync = clamp(player.sync + 24, 0, 100);
+      meta.shards += 1;
+      updateMetaUnlocks();
       sfxKill();
       continue;
     }
@@ -563,7 +593,8 @@ function update(dt) {
 
   const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
   const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${critical ? " // CRITICAL" : ""}`;
+  const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards]`;
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -702,6 +733,11 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key.toLowerCase() === "r") {
     buildLevel(levelSeed + 1);
+    return;
+  }
+
+  if (e.key.toLowerCase() === "q") {
+    nextProtocol();
     return;
   }
 
