@@ -26,12 +26,13 @@ Then open `http://localhost:4173`.
 - Enemy kill possession effect (particle dissolve + reconstruction)
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
 - Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
+- Hit/impact audio pulses and hurt flash feedback for clearer combat readability
 
 ## Roadmap
 
 Development now follows an explicit optimization roadmap in `ROADMAP.md`.
 
 - Phase 1: Vertical-slice foundations ✅
-- Phase 2: Reliability/readability optimization 🟡
+- Phase 2: Reliability/readability optimization ✅
 - Phase 3: Combat depth + roguelike loop 🔜
 - Phase 4: Performance + productionization 🔜

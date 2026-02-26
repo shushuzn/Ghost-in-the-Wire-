@@ -11,15 +11,15 @@
 - [x] 敌人碰撞击杀后“夺舍”粒子重构
 - [x] Sync 稳定值衰减与低稳定度失真反馈（抖屏/输入扰动/2x伤害）
 
-## Phase 2 — Gameplay Reliability & Readability (🟡 In Progress)
+## Phase 2 — Gameplay Reliability & Readability (✅ Completed)
 
-> 当前迭代：已完成敌人状态机，下一步聚焦音效层与命中反馈。
+> 当前迭代：已完成命中/受击音效脉冲与受击闪屏反馈，Phase 2 收官。
 - [x] 线路邻近高亮与可吸附预判（降低操作不确定性）
 - [x] 线路网络由“随机散线”升级为“可导航主干 + 支线”结构
 - [x] Dash 链接段衔接逻辑（端点附近自动跳线，提升流动感）
 - [x] Sync 风险提示强化（HUD闪烁、低Sync色偏加重）
 - [x] 敌人行为状态机（巡逻 / 追踪 / 闪避）
-- [ ] 命中与受击的音效层（电子噪声、失真脉冲）
+- [x] 命中与受击的音效层（电子噪声、失真脉冲）
 
 ## Phase 3 — Combat Depth & Roguelike Loop (🔜 Next)
 - [ ] 程序化房间 + 路径生成（围绕“Wire密度”设计战斗节奏）

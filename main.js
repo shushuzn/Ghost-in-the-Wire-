@@ -101,7 +101,56 @@ const player = {
   fromY: 0,
   toX: 0,
   toY: 0,
+  hurtCd: 0,
 };
+
+const feedback = {
+  hitFlash: 0,
+};
+
+const audio = {
+  ctx: null,
+  enabled: false,
+};
+
+function ensureAudioContext() {
+  if (audio.ctx) return;
+  const Ctor = window.AudioContext || window.webkitAudioContext;
+  if (!Ctor) return;
+  audio.ctx = new Ctor();
+  audio.enabled = true;
+}
+
+function playTone({ freq = 220, type = "square", gain = 0.03, attack = 0.005, decay = 0.1, slide = null } = {}) {
+  if (!audio.enabled || !audio.ctx) return;
+  const now = audio.ctx.currentTime;
+  const osc = audio.ctx.createOscillator();
+  const amp = audio.ctx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, now);
+  if (slide && Number.isFinite(slide.to)) {
+    osc.frequency.linearRampToValueAtTime(slide.to, now + (slide.time || decay));
+  }
+  amp.gain.setValueAtTime(0.0001, now);
+  amp.gain.linearRampToValueAtTime(gain, now + attack);
+  amp.gain.exponentialRampToValueAtTime(0.0001, now + decay);
+  osc.connect(amp);
+  amp.connect(audio.ctx.destination);
+  osc.start(now);
+  osc.stop(now + decay + 0.03);
+}
+
+function sfxDash() {
+  playTone({ freq: 280, type: "sawtooth", gain: 0.025, decay: 0.08, slide: { to: 520, time: 0.08 } });
+}
+
+function sfxKill() {
+  playTone({ freq: 620, type: "square", gain: 0.04, decay: 0.11, slide: { to: 220, time: 0.11 } });
+}
+
+function sfxHit() {
+  playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
+}
 
 function dist2(ax, ay, bx, by) {
   const dx = ax - bx;
@@ -165,6 +214,7 @@ function beginDash() {
   player.canDash = false;
   player.dashCd = cfg.player.dashCooldown;
   player.sync = clamp(player.sync - 6, 0, 100);
+  sfxDash();
 }
 
 function emitTrail() {
@@ -261,6 +311,8 @@ function updateEnemyAI(enemy, dt) {
 
 function update(dt) {
   player.dashCd -= dt;
+  player.hurtCd -= dt;
+  feedback.hitFlash = Math.max(0, feedback.hitFlash - dt * 4.2);
   if (player.dashCd <= 0) player.canDash = true;
 
   player.sync = clamp(player.sync - (player.onWire ? cfg.sync.dashDrain : cfg.sync.passiveDrain) * dt, 0, 100);
@@ -343,6 +395,16 @@ function update(dt) {
       enemy.alive = false;
       possessTo(enemy);
       player.sync = clamp(player.sync + 24, 0, 100);
+      sfxKill();
+      continue;
+    }
+
+    const bodyHitRadius = enemy.r + player.size * 0.46;
+    if (!player.onWire && !player.possessing && player.hurtCd <= 0 && dist2(player.x, player.y, enemy.x, enemy.y) < bodyHitRadius ** 2) {
+      player.sync = clamp(player.sync - 12, 0, 100);
+      player.hurtCd = 0.55;
+      feedback.hitFlash = 1;
+      sfxHit();
     }
   }
 
@@ -458,6 +520,11 @@ function render() {
     ctx.fillRect(0, 0, W, H);
   }
 
+  if (feedback.hitFlash > 0) {
+    ctx.fillStyle = `rgba(255,191,0,${feedback.hitFlash * 0.2})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
   ctx.restore();
 }
 
@@ -470,6 +537,8 @@ function frame(now) {
 }
 
 window.addEventListener("keydown", (e) => {
+  ensureAudioContext();
+  if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
   if (e.code === "Space") {
     e.preventDefault();
     beginDash();
