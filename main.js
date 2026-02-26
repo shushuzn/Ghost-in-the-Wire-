@@ -62,6 +62,7 @@ const particlePool = [];
 const enemies = [];
 const rooms = [];
 const mirrorEchoes = [];
+const wireJunctions = new Map();
 const staticLayer = document.createElement("canvas");
 staticLayer.width = W;
 staticLayer.height = H;
@@ -424,6 +425,25 @@ function createEnemiesFromRooms() {
 }
 
 
+
+function junctionKey(x, y) {
+  return `${Math.round(x / 6) * 6}:${Math.round(y / 6) * 6}`;
+}
+
+function registerWireEndpoint(wire, x, y, atStart) {
+  const key = junctionKey(x, y);
+  if (!wireJunctions.has(key)) wireJunctions.set(key, []);
+  wireJunctions.get(key).push({ wire, atStart, x, y });
+}
+
+function rebuildWireJunctions() {
+  wireJunctions.clear();
+  for (const wire of wires) {
+    registerWireEndpoint(wire, wire.ax, wire.ay, true);
+    registerWireEndpoint(wire, wire.bx, wire.by, false);
+  }
+}
+
 function buildStaticLayer() {
   staticCtx.clearRect(0, 0, W, H);
   staticCtx.fillStyle = "rgba(0,0,0,1)";
@@ -481,6 +501,7 @@ function buildLevel(seed) {
   meta.comboT = 0;
   buildRooms(seed);
   buildWiresFromRooms();
+  rebuildWireJunctions();
   buildStaticLayer();
   createEnemiesFromRooms();
   resetPlayerPosition();
@@ -555,26 +576,39 @@ function tryChainWire() {
   if (!player.wire) return;
   if (player.wireT > 0.05 && player.wireT < 0.95) return;
 
-  const edgeX = player.wireT <= 0 ? player.wire.ax : player.wire.bx;
-  const edgeY = player.wireT <= 0 ? player.wire.ay : player.wire.by;
+  const leavingStart = player.wireT <= 0;
+  const edgeX = leavingStart ? player.wire.ax : player.wire.bx;
+  const edgeY = leavingStart ? player.wire.ay : player.wire.by;
+
+  const currentNx = (player.wire.dx / player.wire.len) * player.wireDir;
+  const currentNy = (player.wire.dy / player.wire.len) * player.wireDir;
+
+  const key = junctionKey(edgeX, edgeY);
+  const candidates = wireJunctions.get(key) || [];
 
   let target = null;
-  let best = 18 * 18;
-  for (const wire of wires) {
-    if (wire === player.wire) continue;
-    const dA = dist2(edgeX, edgeY, wire.ax, wire.ay);
-    const dB = dist2(edgeX, edgeY, wire.bx, wire.by);
-    if (dA < best) {
-      best = dA;
-      target = { wire, t: 0, dir: 1 };
-    }
-    if (dB < best) {
-      best = dB;
-      target = { wire, t: 1, dir: -1 };
+  let bestScore = -Infinity;
+
+  for (const candidate of candidates) {
+    if (candidate.wire === player.wire) continue;
+
+    const wire = candidate.wire;
+    const enterAtStart = candidate.atStart;
+    const dir = enterAtStart ? 1 : -1;
+    const nx = (wire.dx / wire.len) * dir;
+    const ny = (wire.dy / wire.len) * dir;
+
+    const alignment = currentNx * nx + currentNy * ny;
+    const proximityPenalty = dist2(edgeX, edgeY, candidate.x, candidate.y) / (12 * 12);
+    const score = alignment - proximityPenalty;
+
+    if (score > bestScore) {
+      bestScore = score;
+      target = { wire, t: enterAtStart ? 0 : 1, dir };
     }
   }
 
-  if (target) {
+  if (target && bestScore > -0.35) {
     player.wire = target.wire;
     player.wireT = target.t;
     player.wireDir = target.dir;

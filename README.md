@@ -26,7 +26,7 @@ Then open `http://localhost:4173`.
 
 - Neon high-contrast visual palette (`#000000`, `#00FFFF`, `#FF0033`)
 - Procedural rooms + wire-density route generation with nearest-wire highlighting
-- Dash traversal along wire segments at 3x speed with endpoint chain-linking
+- Dash traversal along wire segments at 3x speed with junction-aware, direction-aligned endpoint chain-linking
 - Chromatic aberration trail and speed-based glitch rendering
 - Enemy kill possession effect (particle dissolve + reconstruction)
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
