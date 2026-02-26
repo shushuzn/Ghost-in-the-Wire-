@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ghost in the Wire - Prototype</title>
+  <style>
+    :root {
+      --void: #000000;
+      --neon-cyan: #00ffff;
+      --glitch-red: #ff0033;
+      --muted: #0f1f2a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at center, #06111a 0%, var(--void) 72%);
+      color: var(--neon-cyan);
+      font-family: "Consolas", "Courier New", monospace;
+      overflow: hidden;
+    }
+
+    #hud {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      width: min(360px, 42vw);
+      z-index: 10;
+      pointer-events: none;
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.75);
+    }
+
+    #sync-track {
+      margin-top: 8px;
+      width: 100%;
+      height: 14px;
+      border: 1px solid rgba(0, 255, 255, 0.8);
+      box-shadow: inset 0 0 8px rgba(0, 255, 255, 0.35);
+      background: rgba(0, 0, 0, 0.65);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #sync-fill {
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, #ff0033, #ffd200 34%, #00ffff 100%);
+      box-shadow: 0 0 14px rgba(0, 255, 255, 0.8);
+      transition: width 80ms linear;
+    }
+
+    #panel {
+      position: fixed;
+      bottom: 14px;
+      left: 14px;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(0, 255, 255, 0.35);
+      color: #8ce9ff;
+      padding: 8px 10px;
+      font-size: 12px;
+      line-height: 1.5;
+      z-index: 10;
+      max-width: 460px;
+    }
+
+    canvas {
+      width: min(1100px, 94vw);
+      height: min(700px, 92vh);
+      border: 1px solid rgba(0, 255, 255, 0.35);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.15), inset 0 0 30px rgba(0, 255, 255, 0.09);
+      image-rendering: pixelated;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <div><strong>GHOST // IN THE WIRE</strong></div>
+    <div id="sync-label">SYNC: 100% | DMG x1.0</div>
+    <div id="sync-track"><div id="sync-fill"></div></div>
+  </div>
+
+  <canvas id="game" width="1100" height="700"></canvas>
+
+  <div id="panel">
+    <div>Move: WASD / Arrow Keys</div>
+    <div>Snap Dash to nearest wire: <strong>Space</strong></div>
+    <div>Destroy red drones by dashing through them to trigger possession.</div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
