@@ -16,11 +16,12 @@ Then open `http://localhost:4173`.
 
 - Move: `WASD` or arrow keys
 - Snap Dash to nearest wire: `Space`
+- Regenerate procedural room/wire seed: `R`
 
 ## Implemented Systems
 
 - Neon high-contrast visual palette (`#000000`, `#00FFFF`, `#FF0033`)
-- Structured wire network with nearest-wire highlighting
+- Procedural rooms + wire-density route generation with nearest-wire highlighting
 - Dash traversal along wire segments at 3x speed with endpoint chain-linking
 - Chromatic aberration trail and speed-based glitch rendering
 - Enemy kill possession effect (particle dissolve + reconstruction)
@@ -34,5 +35,5 @@ Development now follows an explicit optimization roadmap in `ROADMAP.md`.
 
 - Phase 1: Vertical-slice foundations ✅
 - Phase 2: Reliability/readability optimization ✅
-- Phase 3: Combat depth + roguelike loop 🔜
+- Phase 3: Combat depth + roguelike loop 🟡
 - Phase 4: Performance + productionization 🔜

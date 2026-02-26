@@ -44,40 +44,12 @@ const cfg = {
   },
 };
 
-const nodes = [
-  { x: 120, y: 120 },
-  { x: 360, y: 90 },
-  { x: 640, y: 130 },
-  { x: 920, y: 110 },
-  { x: 150, y: 340 },
-  { x: 380, y: 300 },
-  { x: 620, y: 360 },
-  { x: 930, y: 330 },
-  { x: 100, y: 580 },
-  { x: 370, y: 560 },
-  { x: 660, y: 540 },
-  { x: 950, y: 560 },
-];
-
-const links = [
-  [0, 1], [1, 2], [2, 3],
-  [4, 5], [5, 6], [6, 7],
-  [8, 9], [9, 10], [10, 11],
-  [0, 4], [4, 8], [1, 5], [5, 9], [2, 6], [6, 10], [3, 7], [7, 11],
-  [1, 4], [2, 5], [6, 9], [7, 10],
-];
-
-const wires = links.map(([a, b]) => {
-  const A = nodes[a];
-  const B = nodes[b];
-  const dx = B.x - A.x;
-  const dy = B.y - A.y;
-  return { ax: A.x, ay: A.y, bx: B.x, by: B.y, dx, dy, len: Math.hypot(dx, dy) || 1 };
-});
-
+const wires = [];
 const trails = [];
 const particles = [];
 const enemies = [];
+const rooms = [];
+let levelSeed = 1;
 
 const player = {
   x: W * 0.5,
@@ -140,22 +112,20 @@ function playTone({ freq = 220, type = "square", gain = 0.03, attack = 0.005, de
   osc.stop(now + decay + 0.03);
 }
 
-function sfxDash() {
-  playTone({ freq: 280, type: "sawtooth", gain: 0.025, decay: 0.08, slide: { to: 520, time: 0.08 } });
-}
-
-function sfxKill() {
-  playTone({ freq: 620, type: "square", gain: 0.04, decay: 0.11, slide: { to: 220, time: 0.11 } });
-}
-
-function sfxHit() {
-  playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
-}
+const sfxDash = () => playTone({ freq: 280, type: "sawtooth", gain: 0.025, decay: 0.08, slide: { to: 520, time: 0.08 } });
+const sfxKill = () => playTone({ freq: 620, type: "square", gain: 0.04, decay: 0.11, slide: { to: 220, time: 0.11 } });
+const sfxHit = () => playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
 
 function dist2(ax, ay, bx, by) {
   const dx = ax - bx;
   const dy = ay - by;
   return dx * dx + dy * dy;
+}
+
+function makeWire(a, b) {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  return { ax: a.x, ay: a.y, bx: b.x, by: b.y, dx, dy, len: Math.hypot(dx, dy) || 1 };
 }
 
 function projectToWire(px, py, wire) {
@@ -178,20 +148,109 @@ function nearestWire(px, py) {
   return hit;
 }
 
-function createEnemies(count = 10) {
-  for (let i = 0; i < count; i += 1) {
-    enemies.push({
-      x: rand(120, W - 120),
-      y: rand(100, H - 100),
-      vx: rand(-48, 48),
-      vy: rand(-48, 48),
-      r: 13,
-      alive: true,
-      state: "patrol",
-      stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
-      patrolAngle: rand(0, Math.PI * 2),
-    });
+function buildRooms(seed) {
+  rooms.length = 0;
+  const cols = 3;
+  const rows = 2;
+  const pad = 56;
+  const gap = 28;
+  const rw = (W - pad * 2 - gap * (cols - 1)) / cols;
+  const rh = (H - pad * 2 - gap * (rows - 1)) / rows;
+
+  for (let y = 0; y < rows; y += 1) {
+    for (let x = 0; x < cols; x += 1) {
+      const density = 0.45 + (((seed + x * 7 + y * 13) % 9) / 8) * 0.55;
+      rooms.push({
+        id: y * cols + x,
+        x: pad + x * (rw + gap),
+        y: pad + y * (rh + gap),
+        w: rw,
+        h: rh,
+        density,
+      });
+    }
   }
+}
+
+function buildWiresFromRooms() {
+  wires.length = 0;
+
+  for (const room of rooms) {
+    const cx = room.x + room.w * 0.5;
+    const cy = room.y + room.h * 0.5;
+
+    const nodeCount = Math.floor(4 + room.density * 5);
+    const nodes = [];
+    for (let i = 0; i < nodeCount; i += 1) {
+      const edge = i % 4;
+      if (edge === 0) nodes.push({ x: rand(room.x + 18, room.x + room.w - 18), y: room.y + 10 });
+      if (edge === 1) nodes.push({ x: room.x + room.w - 10, y: rand(room.y + 18, room.y + room.h - 18) });
+      if (edge === 2) nodes.push({ x: rand(room.x + 18, room.x + room.w - 18), y: room.y + room.h - 10 });
+      if (edge === 3) nodes.push({ x: room.x + 10, y: rand(room.y + 18, room.y + room.h - 18) });
+    }
+
+    for (let i = 0; i < nodes.length; i += 1) {
+      const a = nodes[i];
+      const b = nodes[(i + 1) % nodes.length];
+      wires.push(makeWire(a, b));
+      if (room.density > 0.72 && i % 2 === 0) wires.push(makeWire(a, { x: cx, y: cy }));
+    }
+  }
+
+  // room connectors
+  for (let i = 0; i < rooms.length; i += 1) {
+    for (let j = i + 1; j < rooms.length; j += 1) {
+      const a = rooms[i];
+      const b = rooms[j];
+      const ax = a.x + a.w * 0.5;
+      const ay = a.y + a.h * 0.5;
+      const bx = b.x + b.w * 0.5;
+      const by = b.y + b.h * 0.5;
+      const sameRow = Math.abs(ay - by) < 5;
+      const sameCol = Math.abs(ax - bx) < 5;
+      if (sameRow || sameCol) wires.push(makeWire({ x: ax, y: ay }, { x: bx, y: by }));
+    }
+  }
+}
+
+function createEnemiesFromRooms() {
+  enemies.length = 0;
+  for (const room of rooms) {
+    const count = Math.max(1, Math.floor(1 + room.density * 3));
+    for (let i = 0; i < count; i += 1) {
+      enemies.push({
+        x: rand(room.x + 24, room.x + room.w - 24),
+        y: rand(room.y + 24, room.y + room.h - 24),
+        vx: rand(-48, 48),
+        vy: rand(-48, 48),
+        r: 13,
+        alive: true,
+        state: "patrol",
+        stateT: rand(cfg.enemy.retargetMin, cfg.enemy.retargetMax),
+        patrolAngle: rand(0, Math.PI * 2),
+      });
+    }
+  }
+}
+
+function resetPlayerPosition() {
+  const hub = rooms[Math.floor(rooms.length / 2)] || { x: W * 0.5, y: H * 0.5, w: 0, h: 0 };
+  player.x = hub.x + hub.w * 0.5;
+  player.y = hub.y + hub.h * 0.5;
+  player.vx = 0;
+  player.vy = 0;
+  player.sync = cfg.sync.start;
+  player.onWire = false;
+  player.wire = null;
+  player.possessing = false;
+}
+
+function buildLevel(seed) {
+  levelSeed = seed;
+  buildRooms(seed);
+  buildWiresFromRooms();
+  createEnemiesFromRooms();
+  resetPlayerPosition();
 }
 
 function beginDash() {
@@ -283,13 +342,9 @@ function updateEnemyAI(enemy, dt) {
   const dy = player.y - enemy.y;
   const d = Math.hypot(dx, dy) || 1;
 
-  if (d < cfg.enemy.evadeRadius || player.onWire) {
-    enemy.state = "evade";
-  } else if (d < cfg.enemy.chaseRadius) {
-    enemy.state = "chase";
-  } else {
-    enemy.state = "patrol";
-  }
+  if (d < cfg.enemy.evadeRadius || player.onWire) enemy.state = "evade";
+  else if (d < cfg.enemy.chaseRadius) enemy.state = "chase";
+  else enemy.state = "patrol";
 
   enemy.stateT -= dt;
   if (enemy.stateT <= 0) {
@@ -316,7 +371,6 @@ function update(dt) {
   if (player.dashCd <= 0) player.canDash = true;
 
   player.sync = clamp(player.sync - (player.onWire ? cfg.sync.dashDrain : cfg.sync.passiveDrain) * dt, 0, 100);
-
   const critical = player.sync < cfg.sync.critical;
   const jitter = critical ? ((cfg.sync.critical - player.sync) / cfg.sync.critical) * 76 : 0;
 
@@ -370,7 +424,6 @@ function update(dt) {
   }
 
   const damageMul = critical ? 2 : 1;
-
   for (const enemy of enemies) {
     if (!enemy.alive) continue;
 
@@ -425,7 +478,7 @@ function update(dt) {
 
   if (Math.hypot(player.vx, player.vy) > 240) emitTrail();
 
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)}${critical ? " // CRITICAL" : ""}`;
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -465,6 +518,14 @@ function drawEnemy(enemy) {
   ctx.shadowBlur = 0;
 }
 
+function drawRooms() {
+  ctx.strokeStyle = "rgba(0,255,255,0.12)";
+  ctx.lineWidth = 1;
+  for (const room of rooms) {
+    ctx.strokeRect(room.x, room.y, room.w, room.h);
+  }
+}
+
 function render() {
   const speed = Math.hypot(player.vx, player.vy);
   const glitch = clamp((speed - 160) / 560, 0, 1);
@@ -478,6 +539,8 @@ function render() {
 
   ctx.fillStyle = "rgba(0,0,0,0.32)";
   ctx.fillRect(-24, -24, W + 48, H + 48);
+
+  drawRooms();
 
   const near = nearestWire(player.x, player.y);
   const highlighted = near && near.p.d2 < cfg.player.attachRadius ** 2 ? near.wire : null;
@@ -539,11 +602,18 @@ function frame(now) {
 window.addEventListener("keydown", (e) => {
   ensureAudioContext();
   if (audio.ctx && audio.ctx.state === "suspended") audio.ctx.resume();
+
+  if (e.key.toLowerCase() === "r") {
+    buildLevel(levelSeed + 1);
+    return;
+  }
+
   if (e.code === "Space") {
     e.preventDefault();
     beginDash();
     return;
   }
+
   keys.add(e.key.toLowerCase());
 });
 
@@ -551,5 +621,5 @@ window.addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase());
 });
 
-createEnemies();
+buildLevel(levelSeed);
 requestAnimationFrame(frame);
