@@ -17,6 +17,7 @@ Then open `http://localhost:4173`.
 - Move: `WASD` or arrow keys
 - Snap Dash to nearest wire: `Space`
 - Regenerate procedural room/wire seed: `R`
+- Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
 
 ## Implemented Systems
 
@@ -28,6 +29,7 @@ Then open `http://localhost:4173`.
 - Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
 - Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
 - Possession trait inheritance (swift/tank/volatile) with temporary HUD buff timer
+- Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
 
 ## Roadmap

@@ -42,6 +42,11 @@ const cfg = {
     retargetMin: 0.8,
     retargetMax: 1.8,
   },
+  skills: {
+    overloadCd: 9,
+    shortCd: 11,
+    mirrorCd: 13,
+  },
 };
 
 const wires = [];
@@ -49,6 +54,7 @@ const trails = [];
 const particles = [];
 const enemies = [];
 const rooms = [];
+const mirrorEchoes = [];
 let levelSeed = 1;
 
 const player = {
@@ -76,6 +82,7 @@ const player = {
   hurtCd: 0,
   possessBuff: null,
   possessBuffT: 0,
+  skillCd: { overload: 0, short: 0, mirror: 0 },
 };
 
 const feedback = {
@@ -119,6 +126,46 @@ const sfxKill = () => playTone({ freq: 620, type: "square", gain: 0.04, decay: 0
 const sfxHit = () => playTone({ freq: 120, type: "triangle", gain: 0.04, decay: 0.14, slide: { to: 70, time: 0.14 } });
 
 const traitTypes = ["swift", "tank", "volatile"];
+
+function sfxSkill() {
+  playTone({ freq: 420, type: "square", gain: 0.03, decay: 0.1, slide: { to: 760, time: 0.1 } });
+}
+
+function useOverload() {
+  if (player.skillCd.overload > 0) return;
+  player.skillCd.overload = cfg.skills.overloadCd;
+  player.sync = clamp(player.sync - 10, 0, 100);
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue;
+    const d = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+    if (d < 180) {
+      enemy.alive = false;
+      emitPossessionParticles(enemy.x, enemy.y, enemy.x + rand(-30, 30), enemy.y + rand(-30, 30));
+    }
+  }
+  sfxSkill();
+}
+
+function useShortCircuit() {
+  if (player.skillCd.short > 0) return;
+  player.skillCd.short = cfg.skills.shortCd;
+  player.sync = clamp(player.sync - 6, 0, 100);
+  for (const enemy of enemies) {
+    if (!enemy.alive) continue;
+    enemy.stateT = 0;
+    enemy.vx *= 0.18;
+    enemy.vy *= 0.18;
+  }
+  feedback.hitFlash = Math.max(feedback.hitFlash, 0.5);
+  sfxSkill();
+}
+
+function useMirror() {
+  if (player.skillCd.mirror > 0) return;
+  player.skillCd.mirror = cfg.skills.mirrorCd;
+  mirrorEchoes.push({ x: player.x, y: player.y, life: 3.2, max: 3.2 });
+  sfxSkill();
+}
 
 function dist2(ax, ay, bx, by) {
   const dx = ax - bx;
@@ -248,6 +295,10 @@ function resetPlayerPosition() {
   player.onWire = false;
   player.wire = null;
   player.possessing = false;
+  player.skillCd.overload = 0;
+  player.skillCd.short = 0;
+  player.skillCd.mirror = 0;
+  mirrorEchoes.length = 0;
 }
 
 function buildLevel(seed) {
@@ -349,8 +400,15 @@ function tryChainWire() {
 }
 
 function updateEnemyAI(enemy, dt) {
-  const dx = player.x - enemy.x;
-  const dy = player.y - enemy.y;
+  let tx = player.x;
+  let ty = player.y;
+  if (mirrorEchoes.length > 0) {
+    const e = mirrorEchoes[0];
+    tx = e.x;
+    ty = e.y;
+  }
+  const dx = tx - enemy.x;
+  const dy = ty - enemy.y;
   const d = Math.hypot(dx, dy) || 1;
 
   if (d < cfg.enemy.evadeRadius || player.onWire) enemy.state = "evade";
@@ -378,6 +436,9 @@ function updateEnemyAI(enemy, dt) {
 function update(dt) {
   player.dashCd -= dt;
   player.hurtCd -= dt;
+  player.skillCd.overload = Math.max(0, player.skillCd.overload - dt);
+  player.skillCd.short = Math.max(0, player.skillCd.short - dt);
+  player.skillCd.mirror = Math.max(0, player.skillCd.mirror - dt);
   feedback.hitFlash = Math.max(0, feedback.hitFlash - dt * 4.2);
   if (player.dashCd <= 0) player.canDash = true;
 
@@ -493,10 +554,16 @@ function update(dt) {
     if (p.life <= 0) particles.splice(i, 1);
   }
 
+  for (let i = mirrorEchoes.length - 1; i >= 0; i -= 1) {
+    mirrorEchoes[i].life -= dt;
+    if (mirrorEchoes[i].life <= 0) mirrorEchoes.splice(i, 1);
+  }
+
   if (Math.hypot(player.vx, player.vy) > 240) emitTrail();
 
   const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
-  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${critical ? " // CRITICAL" : ""}`;
+  const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
+  syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${critical ? " // CRITICAL" : ""}`;
   syncFill.style.width = `${player.sync}%`;
 }
 
@@ -587,6 +654,14 @@ function render() {
     drawEnemy(enemy);
   }
 
+  for (const echo of mirrorEchoes) {
+    const k = echo.life / echo.max;
+    ctx.globalAlpha = 0.2 * k;
+    ctx.fillStyle = "#9b7bff";
+    ctx.fillRect(echo.x - player.size / 2, echo.y - player.size / 2, player.size, player.size);
+    ctx.globalAlpha = 1;
+  }
+
   const chroma = glitch * 8;
   drawGhost(-chroma, cfg.colors.red, 0.48 + glitch * 0.42);
   drawGhost(chroma, cfg.colors.cyan, 0.9);
@@ -633,6 +708,19 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "Space") {
     e.preventDefault();
     beginDash();
+    return;
+  }
+
+  if (e.key === "1") {
+    useOverload();
+    return;
+  }
+  if (e.key === "2") {
+    useShortCircuit();
+    return;
+  }
+  if (e.key === "3") {
+    useMirror();
     return;
   }
 
