@@ -51,7 +51,9 @@ const cfg = {
 
 const wires = [];
 const trails = [];
+const trailPool = [];
 const particles = [];
+const particlePool = [];
 const enemies = [];
 const rooms = [];
 const mirrorEchoes = [];
@@ -194,6 +196,41 @@ function useMirror() {
   sfxSkill();
 }
 
+
+function allocTrail(x, y, speed) {
+  const t = trailPool.pop() || { x: 0, y: 0, life: 0, max: 0, speed: 0 };
+  t.x = x;
+  t.y = y;
+  t.life = 0.24;
+  t.max = 0.24;
+  t.speed = speed;
+  trails.push(t);
+}
+
+function freeTrail(i) {
+  const t = trails[i];
+  trails.splice(i, 1);
+  trailPool.push(t);
+}
+
+function allocParticle(x, y, vx, vy, life, c) {
+  const p = particlePool.pop() || { x: 0, y: 0, vx: 0, vy: 0, life: 0, max: 0, c: "#00ffff" };
+  p.x = x;
+  p.y = y;
+  p.vx = vx;
+  p.vy = vy;
+  p.life = life;
+  p.max = life;
+  p.c = c;
+  particles.push(p);
+}
+
+function freeParticle(i) {
+  const p = particles[i];
+  particles.splice(i, 1);
+  particlePool.push(p);
+}
+
 function dist2(ax, ay, bx, by) {
   const dx = ax - bx;
   const dy = ay - by;
@@ -327,6 +364,10 @@ function resetPlayerPosition() {
   player.skillCd.short = 0;
   player.skillCd.mirror = 0;
   mirrorEchoes.length = 0;
+  trails.length = 0;
+  particles.length = 0;
+  trailPool.length = 0;
+  particlePool.length = 0;
 }
 
 function buildLevel(seed) {
@@ -361,21 +402,21 @@ function beginDash() {
 }
 
 function emitTrail() {
-  trails.push({ x: player.x, y: player.y, life: 0.24, max: 0.24, speed: Math.hypot(player.vx, player.vy) });
+  allocTrail(player.x, player.y, Math.hypot(player.vx, player.vy));
 }
 
 function emitPossessionParticles(fromX, fromY, toX, toY) {
   for (let i = 0; i < 80; i += 1) {
     const t = Math.random();
-    particles.push({
-      x: fromX + (toX - fromX) * t + rand(-22, 22),
-      y: fromY + (toY - fromY) * t + rand(-22, 22),
-      vx: rand(-160, 160),
-      vy: rand(-160, 160),
-      life: rand(0.16, 0.52),
-      max: 0.52,
-      c: Math.random() > 0.72 ? cfg.colors.red : cfg.colors.cyan,
-    });
+    const life = rand(0.16, 0.52);
+    allocParticle(
+      fromX + (toX - fromX) * t + rand(-22, 22),
+      fromY + (toY - fromY) * t + rand(-22, 22),
+      rand(-160, 160),
+      rand(-160, 160),
+      life,
+      Math.random() > 0.72 ? cfg.colors.red : cfg.colors.cyan,
+    );
   }
 }
 
@@ -571,7 +612,7 @@ function update(dt) {
 
   for (let i = trails.length - 1; i >= 0; i -= 1) {
     trails[i].life -= dt;
-    if (trails[i].life <= 0) trails.splice(i, 1);
+    if (trails[i].life <= 0) freeTrail(i);
   }
 
   for (let i = particles.length - 1; i >= 0; i -= 1) {
@@ -581,7 +622,7 @@ function update(dt) {
     p.y += p.vy * dt;
     p.vx *= 0.94;
     p.vy *= 0.94;
-    if (p.life <= 0) particles.splice(i, 1);
+    if (p.life <= 0) freeParticle(i);
   }
 
   for (let i = mirrorEchoes.length - 1; i >= 0; i -= 1) {

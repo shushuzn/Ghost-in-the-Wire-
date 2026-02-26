@@ -33,6 +33,7 @@ Then open `http://localhost:4173`.
 - Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
 - Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
+- Performance pass: trail/particle object pooling to reduce GC churn under heavy effects
 
 ## Roadmap
 
@@ -41,4 +42,4 @@ Development now follows an explicit optimization roadmap in `ROADMAP.md`.
 - Phase 1: Vertical-slice foundations ✅
 - Phase 2: Reliability/readability optimization ✅
 - Phase 3: Combat depth + roguelike loop 🟡
-- Phase 4: Performance + productionization 🔜
+- Phase 4: Performance + productionization 🟡

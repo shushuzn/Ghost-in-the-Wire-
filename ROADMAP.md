@@ -32,9 +32,11 @@
 - [x] 夺舍后临时继承敌人特性（移动、攻速、子弹形态）
 - [x] Meta 进度（解锁新Ghost协议、风险换收益）
 
-## Phase 4 — Performance & Productionization (🔜 Next)
+## Phase 4 — Performance & Productionization (🟡 In Progress)
+
+> 当前迭代：新增：已引入 trail/particle 对象池，降低高频特效下的 GC 抖动。
 - [ ] 画布渲染分层缓存（静态层/动态层）
-- [ ] 粒子池与对象池优化（减少GC抖动）
+- [x] 粒子池与对象池优化（减少GC抖动）
 - [ ] 移动端输入与自适应性能档位
 - [ ] 自动化回归脚本（核心手感指标：Dash成功率、帧时间、输入延迟）
 
