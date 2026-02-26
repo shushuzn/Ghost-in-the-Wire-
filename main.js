@@ -8,6 +8,7 @@ const W = canvas.width;
 const H = canvas.height;
 
 const keys = new Set();
+const touch = { active: false, moveId: null, sx: 0, sy: 0, dx: 0, dy: 0 };
 let lastT = performance.now();
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -284,6 +285,19 @@ function nearestWire(px, py) {
   return hit;
 }
 
+
+function getMoveIntent() {
+  let ix = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
+  let iy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+
+  if (touch.active) {
+    ix += touch.dx;
+    iy += touch.dy;
+  }
+
+  return { ix, iy };
+}
+
 function buildRooms(seed) {
   rooms.length = 0;
   const cols = 3;
@@ -443,8 +457,7 @@ function beginDash() {
 
   const nx = player.wire.dx / player.wire.len;
   const ny = player.wire.dy / player.wire.len;
-  const inputX = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
-  const inputY = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+  const { ix: inputX, iy: inputY } = getMoveIntent();
   player.wireDir = inputX * nx + inputY * ny >= 0 ? 1 : -1;
 
   player.canDash = false;
@@ -596,8 +609,7 @@ function update(dt) {
         player.vy = (player.wire.dy / player.wire.len) * player.dashSpeed * player.wireDir;
       }
     } else {
-      let ix = (keys.has("d") || keys.has("arrowright") ? 1 : 0) - (keys.has("a") || keys.has("arrowleft") ? 1 : 0);
-      let iy = (keys.has("s") || keys.has("arrowdown") ? 1 : 0) - (keys.has("w") || keys.has("arrowup") ? 1 : 0);
+      let { ix, iy } = getMoveIntent();
       if (critical) {
         ix += rand(-jitter, jitter) * 0.014;
         iy += rand(-jitter, jitter) * 0.014;
@@ -893,6 +905,48 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("keyup", (e) => {
   keys.delete(e.key.toLowerCase());
 });
+
+
+window.addEventListener("touchstart", (e) => {
+  ensureAudioContext();
+  for (const t of e.changedTouches) {
+    if (t.clientX < window.innerWidth * 0.6 && touch.moveId === null) {
+      touch.moveId = t.identifier;
+      touch.active = true;
+      touch.sx = t.clientX;
+      touch.sy = t.clientY;
+      touch.dx = 0;
+      touch.dy = 0;
+    } else if (t.clientX >= window.innerWidth * 0.6) {
+      beginDash();
+    }
+  }
+}, { passive: true });
+
+window.addEventListener("touchmove", (e) => {
+  if (touch.moveId === null) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier !== touch.moveId) continue;
+    const vx = (t.clientX - touch.sx) / 42;
+    const vy = (t.clientY - touch.sy) / 42;
+    const mag = Math.hypot(vx, vy) || 1;
+    touch.dx = Math.max(-1, Math.min(1, vx / mag));
+    touch.dy = Math.max(-1, Math.min(1, vy / mag));
+    break;
+  }
+}, { passive: true });
+
+window.addEventListener("touchend", (e) => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touch.moveId) {
+      touch.moveId = null;
+      touch.active = false;
+      touch.dx = 0;
+      touch.dy = 0;
+      break;
+    }
+  }
+}, { passive: true });
 
 buildLevel(levelSeed);
 requestAnimationFrame(frame);

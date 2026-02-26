@@ -14,8 +14,8 @@ Then open `http://localhost:4173`.
 
 ## Controls
 
-- Move: `WASD` or arrow keys
-- Snap Dash to nearest wire: `Space`
+- Move: `WASD` or arrow keys (mobile: left touch drag)
+- Snap Dash to nearest wire: `Space` (mobile: tap right side)
 - Regenerate procedural room/wire seed: `R`
 - Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
 - Switch unlocked Ghost Protocol (Meta): `Q`
@@ -36,6 +36,7 @@ Then open `http://localhost:4173`.
 - Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
 - Performance pass: static layer caching + trail/particle object pooling + adaptive governor to reduce draw and GC churn under heavy effects
+- Mobile touch controls: left-side drag movement and right-side dash trigger
 
 ## Roadmap
 
