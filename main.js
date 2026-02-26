@@ -49,6 +49,7 @@ const cfg = {
   },
   perf: {
     tier: "high",
+    auto: false,
   },
 };
 
@@ -80,6 +81,7 @@ const regression = {
   dashLatencyMsAvg: 0,
   dashLatencySamples: 0,
   lastDashKeydown: 0,
+  perfAdjustCd: 0,
 };
 
 window.__ghostMetrics = regression;
@@ -692,7 +694,7 @@ function update(dt) {
   const buffText = player.possessBuff ? ` | BUFF ${player.possessBuff.toUpperCase()} ${player.possessBuffT.toFixed(1)}s` : "";
   const skillText = ` | SKL O:${player.skillCd.overload.toFixed(1)} S:${player.skillCd.short.toFixed(1)} M:${player.skillCd.mirror.toFixed(1)}`;
   const metaText = ` | META ${meta.protocol.toUpperCase()} [${meta.shards} shards]`;
-  const perfText = ` | PERF ${cfg.perf.tier.toUpperCase()}`;
+  const perfText = ` | PERF ${cfg.perf.tier.toUpperCase()}${cfg.perf.auto ? "/AUTO" : ""}`;
   const dashRate = regression.dashAttempts > 0 ? (regression.dashSuccesses / regression.dashAttempts) * 100 : 0;
   const regText = ` | REG f:${regression.frameAvgMs.toFixed(1)}ms d:${dashRate.toFixed(0)}% i:${regression.dashLatencyMsAvg.toFixed(1)}ms`;
   syncLabel.textContent = `SYNC: ${Math.round(player.sync)}% | DMG x${damageMul.toFixed(1)} | SEED ${levelSeed}${buffText}${skillText}${metaText}${perfText}${regText}${critical ? " // CRITICAL" : ""}`;
@@ -809,6 +811,24 @@ function render() {
   ctx.restore();
 }
 
+
+function updatePerfGovernor(dt) {
+  if (!cfg.perf.auto) return;
+  regression.perfAdjustCd -= dt;
+  if (regression.perfAdjustCd > 0) return;
+
+  if (regression.frameAvgMs > 24 && cfg.perf.tier !== "low") {
+    cfg.perf.tier = "low";
+    regression.perfAdjustCd = 2.2;
+    return;
+  }
+
+  if (regression.frameAvgMs < 17 && cfg.perf.tier !== "high") {
+    cfg.perf.tier = "high";
+    regression.perfAdjustCd = 2.2;
+  }
+}
+
 function frame(now) {
   const dt = Math.min((now - lastT) / 1000, 0.033);
   lastT = now;
@@ -817,6 +837,7 @@ function frame(now) {
   regression.frameSamples += 1;
   regression.frameAvgMs += (frameMs - regression.frameAvgMs) / regression.frameSamples;
 
+  updatePerfGovernor(dt);
   update(dt);
   render();
   requestAnimationFrame(frame);
@@ -838,6 +859,11 @@ window.addEventListener("keydown", (e) => {
 
   if (e.key.toLowerCase() === "p") {
     cfg.perf.tier = cfg.perf.tier === "high" ? "low" : "high";
+    return;
+  }
+
+  if (e.key.toLowerCase() === "g") {
+    cfg.perf.auto = !cfg.perf.auto;
     return;
   }
 

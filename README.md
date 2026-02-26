@@ -20,6 +20,7 @@ Then open `http://localhost:4173`.
 - Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
 - Switch unlocked Ghost Protocol (Meta): `Q`
 - Performance tier toggle: `P` (high/low effects load)
+- Auto performance governor: `G` (adaptive quality switching)
 
 ## Implemented Systems
 
@@ -34,7 +35,7 @@ Then open `http://localhost:4173`.
 - Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
 - Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
 - Hit/impact audio pulses and hurt flash feedback for clearer combat readability
-- Performance pass: static layer caching + trail/particle object pooling to reduce draw and GC churn under heavy effects
+- Performance pass: static layer caching + trail/particle object pooling + adaptive governor to reduce draw and GC churn under heavy effects
 
 ## Roadmap
 
@@ -42,7 +43,7 @@ Development now follows an explicit optimization roadmap in `ROADMAP.md`.
 
 - Phase 1: Vertical-slice foundations ✅
 - Phase 2: Reliability/readability optimization ✅
-- Phase 3: Combat depth + roguelike loop 🟡
+- Phase 3: Combat depth + roguelike loop ✅
 - Phase 4: Performance + productionization ✅
 
 
