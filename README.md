@@ -1,0 +1,60 @@
+# Ghost in the Wire — Prototype
+
+A browser-based action-roguelike prototype built with HTML5 Canvas.
+
+## Run
+
+From the repository root:
+
+```bash
+python3 -m http.server 4173
+```
+
+Then open `http://localhost:4173`.
+
+## Controls
+
+- Move: `WASD` or arrow keys (mobile: left touch drag)
+- Snap Dash to nearest wire: `Space` (mobile: tap right side)
+- Regenerate procedural room/wire seed: `R`
+- Custom level settings (panel): seed, start wave, density multiplier + Apply Level
+- Skills: `1` Overload, `2` Short Circuit, `3` Mirror Echo
+- Switch unlocked Ghost Protocol (Meta): `Q`
+- Performance tier toggle: `P` (high/low effects load)
+- Auto performance governor: `G` (adaptive quality switching)
+
+## Implemented Systems
+
+- Neon high-contrast visual palette (`#000000`, `#00FFFF`, `#FF0033`)
+- Procedural rooms + wire-density route generation with nearest-wire highlighting
+- Dash traversal along wire segments at 3x speed with junction-aware, direction-aligned endpoint chain-linking
+- Chromatic aberration trail and speed-based glitch rendering
+- Enemy kill possession effect (particle dissolve + reconstruction)
+- Depleting Sync meter with low-sync instability (shake/input jitter) and 2x damage
+- Enemy FSM behaviors: patrol, chase, and evade for clearer combat rhythm
+- Wave escalation + combo scoring loop for stronger moment-to-moment pacing
+- Elite wave enemies (every few waves) with higher threat and amplified reward (shards/sync/score)
+- Possession trait inheritance (swift/tank/volatile) with temporary HUD buff timer
+- Modular skill system prototype (Overload AoE, Short Circuit control, Mirror Echo decoy)
+- Meta progression loop: shard unlocks + protocol switching (`base` / `rift` / `surge`)
+- Hit/impact audio pulses and hurt flash feedback for clearer combat readability
+- Performance pass: static layer caching + trail/particle object pooling + adaptive governor to reduce draw and GC churn under heavy effects
+- Mobile touch controls: left-side drag movement and right-side dash trigger
+
+## Roadmap
+
+Development now follows an explicit optimization roadmap in `ROADMAP.md`.
+
+- Phase 1: Vertical-slice foundations ✅
+- Phase 2: Reliability/readability optimization ✅
+- Phase 3: Combat depth + roguelike loop ✅
+- Phase 4: Performance + productionization ✅
+
+
+## Regression Probe
+
+Run automated headless checks for frame time, dash success rate, and dash input latency:
+
+```bash
+python3 scripts/regression_probe.py
+```
